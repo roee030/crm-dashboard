@@ -76,6 +76,48 @@ export type InsightRow = {
   deal_stage_recommendation: string | null;
   raw: unknown;
   call_coaching: unknown;
+  deal_health_score: number | null;
+  risk_flags: RiskFlagRow[];
+  playbook_results: Record<string, { score: number; evidence: string; coaching_tip: string }>;
+  created_at: string;
+};
+
+export type RiskFlagRow = {
+  severity: "high" | "medium" | "low";
+  code: string;
+  title: string;
+  evidence_quote: string;
+};
+
+export type PlaybookRow = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description: string | null;
+  language: "en" | "he" | "both";
+  criteria: { id: string; key: string; label: string; description: string; weight: number }[];
+  is_default: boolean;
+  created_at: string;
+};
+
+export type WorkspaceApiKeyRow = {
+  id: string;
+  workspace_id: string;
+  label: string | null;
+  key_prefix: string;
+  key_hash: string;
+  created_by: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+};
+
+export type WorkspaceAlertRuleRow = {
+  id: string;
+  workspace_id: string;
+  webhook_url: string;
+  triggers: string[];
+  is_active: boolean;
   created_at: string;
 };
 
@@ -155,6 +197,9 @@ export type Database = {
       crm_integrations: TableDef<CrmIntegrationRow>;
       crm_sync_logs: TableDef<CrmSyncLogRow>;
       leads: TableDef<LeadRow>;
+      playbooks: TableDef<PlaybookRow>;
+      workspace_api_keys: TableDef<WorkspaceApiKeyRow>;
+      workspace_alert_rules: TableDef<WorkspaceAlertRuleRow>;
     };
     Views: Record<string, never>;
     Functions: {

@@ -1,11 +1,20 @@
 import { createServerSupabase } from "@/lib/supabase/server";
+import { averageAdherence } from "@/lib/playbooks/scoring";
 import type { Objection } from "@/types/db";
+
+export type AtRiskDeal = {
+  callId: string;
+  name: string;
+  score: number;
+};
 
 export type DashboardData = {
   totalCalls: number;
   completedCalls: number;
   avgSentiment: number | null;
   wonDeals: number;
+  avgAdherence: number | null;
+  atRiskDeals: AtRiskDeal[];
   topObjections: { category: string; count: number }[];
   stageDistribution: { stage: string; count: number }[];
   trend: { label: string; calls: number; won: number }[];
@@ -19,11 +28,11 @@ export async function getDashboardData(workspaceId: string): Promise<DashboardDa
   const [{ data: calls }, { data: insights }] = await Promise.all([
     supabase
       .from("calls")
-      .select("id, status, created_at")
+      .select("id, title, customer_name, status, created_at")
       .eq("workspace_id", workspaceId),
     supabase
       .from("insights")
-      .select("call_id, sentiment_score, objections, deal_stage_recommendation, created_at")
+      .select("call_id, sentiment_score, deal_health_score, objections, deal_stage_recommendation, created_at")
       .eq("workspace_id", workspaceId),
   ]);
 
@@ -42,6 +51,21 @@ export async function getDashboardData(workspaceId: string): Promise<DashboardDa
   const wonDeals = insightRows.filter(
     (i) => (i.deal_stage_recommendation ?? "").toLowerCase() === "closed won",
   ).length;
+
+  // Playbook adherence + at-risk deals (deal_health_score < 50).
+  const avgAdherence = averageAdherence(insightRows.map((i) => i.deal_health_score));
+  const callName = new Map(
+    callRows.map((c) => [c.id, c.customer_name || c.title || "Call"]),
+  );
+  const atRiskDeals: AtRiskDeal[] = insightRows
+    .filter((i) => i.deal_health_score != null && Number(i.deal_health_score) < 50)
+    .map((i) => ({
+      callId: i.call_id,
+      name: callName.get(i.call_id) ?? "Call",
+      score: Number(i.deal_health_score),
+    }))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 6);
 
   // Top objection categories.
   const objCounts = new Map<string, number>();
@@ -94,6 +118,8 @@ export async function getDashboardData(workspaceId: string): Promise<DashboardDa
     completedCalls,
     avgSentiment,
     wonDeals,
+    avgAdherence,
+    atRiskDeals,
     topObjections,
     stageDistribution,
     trend: buckets,

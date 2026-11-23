@@ -3,13 +3,14 @@
 Branch: `feat/v2-revenue-intelligence` · Logs: `/tmp/*.log`
 
 - [x] **Phase 0** — Recon, `ARCHITECTURE_AUDIT.md`, `STATUS.md`, branch, commit
-- [ ] **Phase 1** — AI Sales Playbooks & Deal Risk Radar
-  - [ ] `0004` migration: `playbooks`, `insights` score columns, composite indexes
-  - [ ] Seed + onboarding auto-provision (BANT EN, B2B Qualification HE)
-  - [ ] Extraction: weighted `deal_health_score`, `risk_flags`, `playbook_results`
-  - [ ] `POST /api/calls/[id]/reanalyze`
-  - [ ] `/settings/playbooks`, Deal Health Gauge + Risk Radar + Scorecard on `/calls/[id]`
-  - [ ] Dashboard At-Risk + Avg Adherence KPI
+- [x] **Phase 1** — AI Sales Playbooks & Deal Risk Radar
+  - [x] `0004` migration: `playbooks`, `insights` score columns, composite indexes
+  - [x] Seed + onboarding auto-provision (BANT EN, B2B Qualification HE)
+  - [x] Extraction: weighted `deal_health_score`, `risk_flags`, `playbook_results`
+  - [x] `POST /api/calls/[id]/reanalyze`
+  - [x] `/settings/playbooks`, Deal Health Gauge + Risk Radar + Scorecard on `/calls/[id]`
+  - [x] Dashboard At-Risk + Avg Adherence KPI
+  - Verifier: tsc ✅ · tests 19/19 ✅ · build ✅ · no new secret/RLS exposure · RTL dir="auto" on all new text
 - [ ] **Phase 2** — Zero-touch ingestion
   - [ ] `workspace_api_keys` (hashed, service-role-only)
   - [ ] `POST /api/webhooks/calls/ingest` (Bearer, timingSafeEqual, dedupe, 202)

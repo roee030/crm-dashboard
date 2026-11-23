@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTranscript, mapUtterances } from "@/lib/assemblyai/client";
-import { extractInsights } from "@/lib/claude/extract";
+import { analyzeAndStoreInsights } from "@/lib/pipeline/analyze";
 import { autoSyncCall } from "@/lib/crm/integration";
+import { dispatchCallAlerts } from "@/lib/alerts/dispatch";
 import { MODELS } from "@/lib/config/models";
 
 export type FinalizeResult = {
@@ -102,32 +103,19 @@ export async function finalizeCall(callId: string): Promise<FinalizeResult> {
     return { callId, status: "processing", idempotent: true, detail: "analysis already in progress" };
   }
 
-  // --- Run Claude and store insights (also UNIQUE(call_id)-guarded) ---
+  // --- Run Claude + playbook scoring and store insights (claim ensures single run) ---
   try {
-    const insights = await extractInsights({
+    await analyzeAndStoreInsights(db, {
+      callId,
+      workspaceId: call.workspace_id,
       fullText: t.text ?? "",
-      language: t.language_code,
+      language: t.language_code ?? null,
     });
-
-    await db.from("insights").upsert(
-      {
-        call_id: callId,
-        workspace_id: call.workspace_id,
-        model: MODELS.claude.model,
-        summary: insights.summary,
-        sentiment_label: insights.sentiment_label,
-        sentiment_score: insights.sentiment_score,
-        objections: insights.objections,
-        action_items: insights.action_items,
-        deal_stage_recommendation: insights.deal_stage_recommendation,
-        raw: insights,
-      },
-      { onConflict: "call_id", ignoreDuplicates: true },
-    );
 
     await db.from("calls").update({ status: "completed", error_message: null }).eq("id", callId);
 
-    // Auto-sync to any CRM integration with auto_sync enabled. Never throws.
+    // Fire-and-forget side effects — neither may break the pipeline.
+    await dispatchCallAlerts(callId);
     await autoSyncCall(callId);
 
     return { callId, status: "completed" };

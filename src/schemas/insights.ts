@@ -23,6 +23,26 @@ export const insightsSchema = z.object({
     )
     .default([]),
   deal_stage_recommendation: z.string(),
+  risk_flags: z
+    .array(
+      z.object({
+        severity: z.enum(["high", "medium", "low"]),
+        code: z.string(),
+        title: z.string(),
+        evidence_quote: z.string(),
+      }),
+    )
+    .default([]),
+  playbook_results: z
+    .array(
+      z.object({
+        key: z.string(),
+        score: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+        evidence: z.string(),
+        coaching_tip: z.string(),
+      }),
+    )
+    .default([]),
 });
 
 export type Insights = z.infer<typeof insightsSchema>;
@@ -79,6 +99,39 @@ export const insightsJsonSchema = {
       description:
         "Recommended CRM deal stage, e.g. 'Discovery', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'.",
     },
+    risk_flags: {
+      type: "array",
+      description:
+        "Concrete deal risks found in the transcript: missing decision-maker, no agreed next step, unaddressed price objection, competitor mention, etc.",
+      items: {
+        type: "object",
+        properties: {
+          severity: { type: "string", enum: ["high", "medium", "low"] },
+          code: {
+            type: "string",
+            description: "snake_case code, e.g. missing_decision_maker, no_next_step, unaddressed_price, competitor_mention.",
+          },
+          title: { type: "string" },
+          evidence_quote: { type: "string", description: "A short verbatim quote from the transcript (original language)." },
+        },
+        required: ["severity", "code", "title", "evidence_quote"],
+      },
+    },
+    playbook_results: {
+      type: "array",
+      description:
+        "Score the call against EACH provided playbook criterion key. score: 0=not met, 1=partial, 2=fully met.",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "The criterion key provided in the prompt." },
+          score: { type: "integer", enum: [0, 1, 2] },
+          evidence: { type: "string", description: "Verbatim transcript evidence (original language) or empty if none." },
+          coaching_tip: { type: "string", description: "One concise tip to improve this criterion." },
+        },
+        required: ["key", "score", "evidence", "coaching_tip"],
+      },
+    },
   },
   required: [
     "summary",
@@ -87,5 +140,7 @@ export const insightsJsonSchema = {
     "objections",
     "action_items",
     "deal_stage_recommendation",
+    "risk_flags",
+    "playbook_results",
   ],
 } as const;

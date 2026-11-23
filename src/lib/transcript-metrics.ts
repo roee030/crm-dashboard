@@ -22,6 +22,20 @@ function wordCount(text: string): number {
 }
 
 /**
+ * Index of the utterance active at `currentMs` (start_ms <= t < end_ms).
+ * Falls back to the most recent utterance that has started. -1 if none. Pure.
+ */
+export function activeUtteranceIndex(utterances: Utterance[], currentMs: number): number {
+  let fallback = -1;
+  for (let i = 0; i < utterances.length; i++) {
+    const u = utterances[i];
+    if (currentMs >= u.start_ms && currentMs < u.end_ms) return i;
+    if (currentMs >= u.start_ms) fallback = i;
+  }
+  return fallback;
+}
+
+/**
  * Deterministic talk-to-listen ratio and per-speaker breakdown from diarized
  * utterances. Pure function — no AI, same input always yields the same output.
  */

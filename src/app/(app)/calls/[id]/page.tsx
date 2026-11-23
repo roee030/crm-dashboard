@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusTracker } from "@/components/calls/status-tracker";
 import { TranscriptViewer } from "@/components/calls/transcript-viewer";
 import { InsightsCard } from "@/components/calls/insights-card";
-import { AudioPlayer } from "@/components/calls/audio-player";
+import { SyncedPlayer } from "@/components/calls/synced-player";
 import { SyncCrmButton } from "@/components/calls/sync-crm-button";
 import { SyncHistory, type SyncLog } from "@/components/calls/sync-history";
 import { TalkRatio } from "@/components/calls/talk-ratio";
@@ -131,24 +131,15 @@ export default async function CallPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Transcript</CardTitle>
+              <CardTitle>Audio &amp; Transcript</CardTitle>
             </CardHeader>
             <CardContent>
-              <TranscriptViewer utterances={utterances} />
+              <SyncedPlayer src={audioSrc} utterances={utterances} />
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Audio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AudioPlayer src={audioSrc} />
-            </CardContent>
-          </Card>
-
           {insight ? (
             <InsightsCard insight={insight as InsightRow} />
           ) : (

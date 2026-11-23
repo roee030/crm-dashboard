@@ -6,19 +6,27 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // Open-redirect guard: only accept a same-origin relative path.
+  // Open-redirect guard: resolve the target, then require it to be same-origin,
+  // a relative "/path" (not "//host" or "/\host"), and free of control chars.
   const nextParam = searchParams.get("next") ?? "/dashboard";
-  const next =
-    nextParam.startsWith("/") &&
-    !nextParam.startsWith("//") &&
-    !nextParam.startsWith("/\\")
-      ? nextParam
-      : "/dashboard";
+  let target = new URL("/dashboard", origin);
+  try {
+    const candidate = new URL(nextParam, origin);
+    if (
+      candidate.origin === origin &&
+      nextParam.startsWith("/") &&
+      !/[\\\t\r\n]/.test(nextParam)
+    ) {
+      target = candidate;
+    }
+  } catch {
+    /* malformed next → fall back to /dashboard */
+  }
 
   if (code) {
     const supabase = await createServerSupabase();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next, origin));
+    if (!error) return NextResponse.redirect(target);
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth`);

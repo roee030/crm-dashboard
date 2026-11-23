@@ -214,11 +214,13 @@ create policy insights_rw on public.insights
   for all using (public.is_workspace_member(workspace_id))
   with check (public.is_workspace_member(workspace_id));
 
--- crm_integrations: members may manage config; tokens are stripped before leaving
--- the server, never selected into client responses (enforced in app layer).
-create policy crm_integrations_rw on public.crm_integrations
-  for all using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+-- crm_integrations holds encrypted OAuth/API tokens. RLS is enabled with NO
+-- client policies: neither anon nor authenticated users may read or write this
+-- table directly (a workspace member must never be able to SELECT even the
+-- encrypted token columns). ALL access is through the service-role client in
+-- trusted server code (src/lib/crm/integration.ts), which also enforces the
+-- owner/admin role check before any write. This is defense-in-depth on top of
+-- the AES-256-GCM encryption of the token columns.
 
 create policy crm_sync_logs_select on public.crm_sync_logs
   for select using (public.is_workspace_member(workspace_id));

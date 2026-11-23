@@ -5,12 +5,20 @@ import { createServerSupabase } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+
+  // Open-redirect guard: only accept a same-origin relative path.
+  const nextParam = searchParams.get("next") ?? "/dashboard";
+  const next =
+    nextParam.startsWith("/") &&
+    !nextParam.startsWith("//") &&
+    !nextParam.startsWith("/\\")
+      ? nextParam
+      : "/dashboard";
 
   if (code) {
     const supabase = await createServerSupabase();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(new URL(next, origin));
   }
 
   return NextResponse.redirect(`${origin}/login?error=auth`);

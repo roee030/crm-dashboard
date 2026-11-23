@@ -204,6 +204,7 @@ Claude extraction output (1:1 with call). Structured, schema-validated.
 | action_items | jsonb | `[{ text, owner, due_hint }]` |
 | deal_stage_recommendation | text | |
 | raw | jsonb | full model response for audit |
+| call_coaching | jsonb | cached AI Coach output (scorecard, counters, email) — Phase 5 |
 | created_at | timestamptz | |
 
 ### `crm_integrations`
@@ -324,9 +325,39 @@ ENCRYPTION_KEY=                     # for CRM token encryption
 
 ## 9. Build Phases
 
-1. **Phase 1 — Setup & Plan** *(this file).* Architecture, structure, schema. ← approval gate
-2. **Phase 2 — Core Pipeline.** Ingest → AssemblyAI → Claude → Supabase.
-3. **Phase 3 — Dashboard UI.** KPIs, Top Objections, conversion trends, call drill-down.
-4. **Phase 4 — CRM Sync.** Integrations settings + two-way sync.
+1. **Phase 1 — Setup & Plan** *(this file).* Architecture, structure, schema. ✅
+2. **Phase 2 — Core Pipeline.** Ingest → AssemblyAI → Claude → Supabase. ✅
+3. **Phase 3 — Dashboard UI + Auth.** KPIs, charts, drill-down, upload, onboarding. ✅
+4. **Phase 4 — CRM Sync.** Integrations settings + two-way HubSpot/Monday sync. ✅
+5. **Phase 5 — User-Facing AI + Growth.** AI Call Coach, workspace copilot, marketing
+   landing + lead capture, token refresh, Vitest suite. ✅
 
-> Per the execution workflow: **do not write application code until Phase 1 is approved.**
+## 10. Phase 5 additions (keep accurate)
+
+**Migrations**
+- `0001_init.sql` — base schema, RLS, storage.
+- `0002_onboarding.sql` — `handle_new_user` trigger: auto-creates profile + workspace +
+  owner membership on signup (so RLS works without `DEV_API_KEY`).
+- `0003_ai_features.sql` — `insights.call_coaching jsonb` (cached AI coaching);
+  `leads` table (public capture via service role; authenticated read).
+
+**New routes**
+- `GET  /` — public marketing landing (`src/app/(marketing)/page.tsx`).
+- `POST /api/calls/[id]/coach` — AI scorecard + missed-opportunity counters +
+  follow-up email (cached in `insights.call_coaching`).
+- `POST /api/ai/chat` — streaming workspace copilot (RLS/workspace-scoped).
+- `POST /api/leads` — public lead capture.
+
+**New library code**
+- `src/lib/crypto.ts` — AES-256-GCM encrypt/decrypt for CRM tokens.
+- `src/lib/transcript-metrics.ts` — deterministic talk-to-listen ratio.
+- `src/lib/claude/coach.ts` + `src/schemas/coaching.ts` — coaching extraction.
+- `src/lib/crm/*` — `CrmProvider` interface, `hubspot.ts` (OAuth token refresh,
+  pure association helpers), `monday.ts`, `oauth.ts`, `integration.ts`.
+- `src/lib/demo/sample-calls.ts` — EN/HE sample data for the landing lead magnet.
+
+**Tests** — `tests/*.test.ts` (Vitest): crypto round-trip, insight/coaching Zod +
+Hebrew preservation, CRM note/association formatting, talk-ratio math.
+Scripts: `npm test`, `npm run typecheck`, `npm run build`.
+
+> Per the execution workflow: Phase 1 required approval before code; all phases approved.

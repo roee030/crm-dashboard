@@ -45,6 +45,7 @@ export type CallRow = {
   status: CallStatus;
   error_message: string | null;
   external_provider_id: string | null;
+  external_call_id: string | null;
   crm_contact_ref: string | null;
   created_at: string;
   updated_at: string;

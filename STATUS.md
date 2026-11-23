@@ -11,10 +11,12 @@ Branch: `feat/v2-revenue-intelligence` · Logs: `/tmp/*.log`
   - [x] `/settings/playbooks`, Deal Health Gauge + Risk Radar + Scorecard on `/calls/[id]`
   - [x] Dashboard At-Risk + Avg Adherence KPI
   - Verifier: tsc ✅ · tests 19/19 ✅ · build ✅ · no new secret/RLS exposure · RTL dir="auto" on all new text
-- [ ] **Phase 2** — Zero-touch ingestion
-  - [ ] `workspace_api_keys` (hashed, service-role-only)
-  - [ ] `POST /api/webhooks/calls/ingest` (Bearer, timingSafeEqual, dedupe, 202)
-  - [ ] `/settings/webhooks` (generate/revoke, snippets, test button)
+- [x] **Phase 2** — Zero-touch ingestion
+  - [x] `workspace_api_keys` (SHA-256 hashed, service-role-only RLS)
+  - [x] `POST /api/webhooks/calls/ingest` (Bearer, timingSafeEqual, dedupe, SSRF-guarded, 202)
+  - [x] `/settings/webhooks` (generate/revoke, copy-once secret, snippets, test button)
+  - Verifier: tsc ✅ · tests 19/19 ✅ · build ✅ · key_hash never client-selected · SSRF guard on recording_url
+  - Security review fixes: IPv6 SSRF fail-closed allowlist, alert fetch `redirect:"manual"`, playbooks RLS → member-read/service-role-write
 - [ ] **Phase 3** — Synced player, search, export
   - [ ] Audio ↔ transcript sync + speed + keyword highlight
   - [ ] `/calls` filters + `GET /api/calls/export?format=csv|json`

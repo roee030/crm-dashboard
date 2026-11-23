@@ -16,10 +16,13 @@ create table if not exists public.playbooks (
 create index if not exists playbooks_workspace_idx on public.playbooks (workspace_id);
 
 alter table public.playbooks enable row level security;
+-- Members may READ playbooks (UI). All writes go through the service-role client
+-- in server actions that enforce the owner/admin role check, so no client write
+-- policy is granted (RLS must not be weaker than the app's authorization gate).
 drop policy if exists playbooks_rw on public.playbooks;
-create policy playbooks_rw on public.playbooks
-  for all using (public.is_workspace_member(workspace_id))
-  with check (public.is_workspace_member(workspace_id));
+drop policy if exists playbooks_read on public.playbooks;
+create policy playbooks_read on public.playbooks
+  for select using (public.is_workspace_member(workspace_id));
 
 -- Deal scoring columns on insights.
 alter table public.insights
@@ -104,8 +107,15 @@ end;
 $$;
 
 -- ===========================================================================
--- Phase 2: Workspace ingestion API keys (hashed; service-role-only)
+-- Phase 2: Zero-touch ingestion
 -- ===========================================================================
+-- Caller-supplied id for idempotent inbound ingestion (dedupe).
+alter table public.calls add column if not exists external_call_id text;
+create unique index if not exists calls_ws_external_call_id_uniq
+  on public.calls (workspace_id, external_call_id)
+  where external_call_id is not null;
+
+-- Workspace ingestion API keys (hashed; service-role-only)
 create table if not exists public.workspace_api_keys (
   id           uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,

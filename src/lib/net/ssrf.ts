@@ -30,12 +30,16 @@ function isPrivateIpv4(ip: string): boolean {
 function isPrivateIpv6(ip: string): boolean {
   const addr = ip.toLowerCase().replace(/^\[|\]$/g, "");
   if (addr === "::1" || addr === "::") return true; // loopback / unspecified
+  // IPv4-mapped / -compatible (::ffff:a.b.c.d or ::a.b.c.d) → check the IPv4 part.
+  const mapped = addr.match(/(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isPrivateIpv4(mapped[1]);
   if (addr.startsWith("fe80")) return true; // link-local
   if (addr.startsWith("fc") || addr.startsWith("fd")) return true; // unique local fc00::/7
-  // IPv4-mapped (::ffff:a.b.c.d)
-  const mapped = addr.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isPrivateIpv4(mapped[1]);
-  return false;
+  // Fail closed: only 2000::/3 global unicast is treated as public; everything
+  // else (documentation, ULA variants, unknown forms) is blocked.
+  const firstHextet = parseInt(addr.split(":")[0] || "0", 16);
+  if (Number.isNaN(firstHextet)) return true;
+  return !(firstHextet >= 0x2000 && firstHextet <= 0x3fff);
 }
 
 /**

@@ -52,6 +52,9 @@ export async function dispatchCallAlerts(callId: string): Promise<void> {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          // Do not follow redirects — a 3xx to a private host would bypass the
+          // SSRF pre-check (residual DNS-rebinding TOCTOU noted in the report).
+          redirect: "manual",
           signal: AbortSignal.timeout(5000),
         });
       } catch {

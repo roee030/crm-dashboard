@@ -1,0 +1,16 @@
+# Minimal local Supabase config. Run `supabase start` then `supabase db reset`.
+project_id = "signaldesk"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+port = 54321
+schemas = ["public", "storage"]
+
+[studio]
+port = 54323
+
+[auth]
+enabled = true

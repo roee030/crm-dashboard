@@ -48,9 +48,15 @@ export async function saveAlertRule(input: {
     .maybeSingle();
 
   if (existing) {
+    // Blank input = keep the stored secret; only overwrite when a new URL is given.
+    const patch: { triggers: string[]; is_active: boolean; webhook_url?: string } = {
+      triggers: input.triggers,
+      is_active: input.isActive,
+    };
+    if (input.webhookUrl) patch.webhook_url = input.webhookUrl;
     const { error } = await admin
       .from("workspace_alert_rules")
-      .update({ webhook_url: input.webhookUrl, triggers: input.triggers, is_active: input.isActive })
+      .update(patch)
       .eq("id", existing.id)
       .eq("workspace_id", ctx.workspaceId);
     return error ? { ok: false, error: error.message } : { ok: true };

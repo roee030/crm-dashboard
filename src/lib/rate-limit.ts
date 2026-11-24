@@ -1,28 +1,15 @@
 /**
- * Minimal in-memory fixed-window rate limiter. Suitable for single-instance /
- * dev use; swap the store for Redis/Upstash in a multi-instance deployment.
+ * Minimal in-memory fixed-window rate limiter for single-instance / dev use.
+ *
+ * Production note: this is best-effort. For multi-instance or hostile traffic use a
+ * shared store with TTL (Redis/Upstash) keyed by a platform-provided client IP. The
+ * limiter below never evicts a *live* bucket (which would reset a victim's counter);
+ * at the memory cap it fails closed for new keys instead.
  */
 type Bucket = { count: number; resetAt: number };
 
 const store = new Map<string, Bucket>();
-const MAX_ENTRIES = 10_000;
-
-/**
- * Keep the store hard-bounded: first drop expired buckets, then — if still at the
- * cap — evict the oldest entries (Map preserves insertion order), so a flood of
- * unique keys within one window cannot grow memory without limit.
- */
-function enforceCap(now: number) {
-  if (store.size < MAX_ENTRIES) return;
-  for (const [key, bucket] of store) {
-    if (now >= bucket.resetAt) store.delete(key);
-  }
-  while (store.size >= MAX_ENTRIES) {
-    const oldest = store.keys().next().value;
-    if (oldest === undefined) break;
-    store.delete(oldest);
-  }
-}
+const MAX_ENTRIES = 50_000;
 
 export type RateLimitResult = {
   ok: boolean;
@@ -30,27 +17,40 @@ export type RateLimitResult = {
   resetMs: number;
 };
 
+function pruneExpired(now: number) {
+  for (const [key, bucket] of store) {
+    if (now >= bucket.resetAt) store.delete(key);
+  }
+}
+
 export function checkRateLimit(
   key: string,
   opts: { limit: number; windowMs: number },
   now: number = Date.now(),
 ): RateLimitResult {
   const existing = store.get(key);
-  // Hard-bound the store before inserting a potential new key.
-  if (!existing || now >= existing.resetAt) enforceCap(now);
 
-  if (!existing || now >= existing.resetAt) {
-    const resetAt = now + opts.windowMs;
-    store.set(key, { count: 1, resetAt });
-    return { ok: true, remaining: opts.limit - 1, resetMs: opts.windowMs };
+  // Active bucket: count within the current window.
+  if (existing && now < existing.resetAt) {
+    if (existing.count >= opts.limit) {
+      return { ok: false, remaining: 0, resetMs: existing.resetAt - now };
+    }
+    existing.count += 1;
+    return { ok: true, remaining: opts.limit - existing.count, resetMs: existing.resetAt - now };
   }
 
-  if (existing.count >= opts.limit) {
-    return { ok: false, remaining: 0, resetMs: existing.resetAt - now };
+  // New or expired key needs a slot. Bound memory WITHOUT evicting live buckets.
+  if (!existing && store.size >= MAX_ENTRIES) {
+    pruneExpired(now);
+    if (store.size >= MAX_ENTRIES) {
+      // Fail closed rather than reset another key's live counter.
+      return { ok: false, remaining: 0, resetMs: opts.windowMs };
+    }
   }
 
-  existing.count += 1;
-  return { ok: true, remaining: opts.limit - existing.count, resetMs: existing.resetAt - now };
+  const resetAt = now + opts.windowMs;
+  store.set(key, { count: 1, resetAt });
+  return { ok: true, remaining: opts.limit - 1, resetMs: opts.windowMs };
 }
 
 /** Test/maintenance helper. */
@@ -59,19 +59,15 @@ export function __resetRateLimitStore() {
 }
 
 /**
- * Derive a client key from a request IP.
+ * Derive a rate-limit key from a request IP.
  *
- * ⚠️ `x-forwarded-for` is client-controllable unless a trusted proxy overwrites it,
- * and a Web `Request` exposes no socket IP. So:
- *   - Behind a proxy you control, set TRUSTED_PROXY=1 and TRUSTED_PROXY_HEADER to the
- *     header that proxy sets (default `x-real-ip`; e.g. `cf-connecting-ip` on Cloudflare,
- *     `x-vercel-forwarded-for` on Vercel). That header is trusted.
- *   - Otherwise we DO NOT trust client headers and fail closed to a single shared
- *     bucket per scope. This is only used by the public lead form, where the limit is
- *     abuse-dampening, not a security control.
- * Authenticated endpoints key by identity (user id / API-key id), not by this helper.
- * For robust multi-instance limiting, use a shared store (Redis/Upstash) keyed by the
- * platform-provided IP.
+ * ⚠️ `x-forwarded-for` is client-controllable and a Web `Request` exposes no socket
+ * IP. Only trust a proxy header when TRUSTED_PROXY=1 (set TRUSTED_PROXY_HEADER to the
+ * header your proxy sets — e.g. `cf-connecting-ip`, `x-vercel-forwarded-for`,
+ * `x-real-ip`). Otherwise we DO NOT trust client headers and use one shared key per
+ * scope — acceptable only because this helper is used by the public lead form, where
+ * the limit is abuse-dampening, not a security control. Authenticated endpoints key by
+ * identity (user id / API-key id) instead. Use Redis keyed by the platform IP in prod.
  */
 export function clientKey(req: Request, scope: string): string {
   if (process.env.TRUSTED_PROXY === "1") {
@@ -79,6 +75,5 @@ export function clientKey(req: Request, scope: string): string {
     const ip = req.headers.get(header)?.split(",")[0]?.trim();
     if (ip) return `${scope}:${ip}`;
   }
-  // Fail closed: no trusted IP source → one shared bucket for this scope.
   return `${scope}:shared`;
 }

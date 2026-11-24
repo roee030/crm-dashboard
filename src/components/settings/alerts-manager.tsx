@@ -16,11 +16,12 @@ const TRIGGERS: { key: string; label: string; hint: string }[] = [
 export function AlertsManager({
   initial,
 }: {
-  initial: { webhook_url: string; triggers: string[]; is_active: boolean } | null;
+  initial: { hasWebhook: boolean; triggers: string[]; is_active: boolean } | null;
 }) {
-  const [webhookUrl, setWebhookUrl] = useState(initial?.webhook_url ?? "");
+  const [webhookUrl, setWebhookUrl] = useState("");
   const [triggers, setTriggers] = useState<string[]>(initial?.triggers ?? ["on_high_risk_deal"]);
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
+  const hasWebhook = initial?.hasWebhook ?? false;
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -39,10 +40,13 @@ export function AlertsManager({
         <div className="space-y-1.5">
           <label className="text-sm text-slate-300">Outbound webhook URL (Slack / Teams / Make / Custom)</label>
           <Input
-            placeholder="https://hooks.slack.com/services/…"
+            placeholder={hasWebhook ? "•••• configured — enter a new URL to replace" : "https://hooks.slack.com/services/…"}
             value={webhookUrl}
             onChange={(e) => setWebhookUrl(e.target.value)}
           />
+          {hasWebhook && !webhookUrl && (
+            <p className="text-xs text-slate-500">A webhook is saved. Leave blank to keep it.</p>
+          )}
         </div>
 
         <div className="space-y-2">

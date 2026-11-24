@@ -23,9 +23,11 @@ Branch: `feat/v2-revenue-intelligence` · Logs: `/tmp/*.log`
   - [x] `/calls` multi-facet URL-param filters (search, sentiment, risk, language, CRM sync) + Export CSV button
   - Verifier: tsc ✅ · build ✅
   - Security follow-up: CSV formula-injection guard added to `csvEscape`; audited export (RLS-scoped, no secret columns) + anchored IPv6 SSRF regex
-- [ ] **Phase 4** — Alerts & weekly digest
-  - [ ] `workspace_alert_rules` + `/settings/alerts` + finalize dispatch
-  - [ ] `GET /api/digest/weekly` + dashboard drawer
+- [x] **Phase 4** — Alerts & weekly digest
+  - [x] `workspace_alert_rules` + `src/lib/alerts/*` + finalize dispatch (built in P1)
+  - [x] `/settings/alerts` UI (webhook URL, 3 trigger toggles, Send Test Alert)
+  - [x] `GET /api/digest/weekly` (RLS-scoped) + Weekly Executive Brief drawer on `/dashboard` (EN/HE, copy)
+  - Verifier: tsc ✅ · build ✅ · alerts/digest SSRF-guarded + workspace-scoped
 - [ ] **Phase 5** — Hardening, 35+ tests, push
   - [ ] Rate limiting + SSRF guard
   - [ ] Vitest 35+

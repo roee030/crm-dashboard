@@ -6,6 +6,7 @@ import { Kpi } from "@/components/dashboard/kpi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ObjectionsChart } from "@/components/charts/objections-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
+import { WeeklyBriefDrawer } from "@/components/dashboard/weekly-brief-drawer";
 
 export default async function DashboardPage() {
   const ctx = await requireContext();
@@ -13,9 +14,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-slate-400">Conversation intelligence across your calls.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-slate-400">Conversation intelligence across your calls.</p>
+        </div>
+        <WeeklyBriefDrawer />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

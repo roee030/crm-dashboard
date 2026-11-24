@@ -4,21 +4,14 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type AuthState } from "./actions";
+import { login, signup } from "./actions";
 
-type Action = (prev: AuthState, formData: FormData) => Promise<AuthState>;
-
-export function AuthForm({
-  mode,
-  action,
-}: {
-  mode: "login" | "signup";
-  action: Action;
-}) {
-  const [state, formAction, pending] = useActionState<AuthState, FormData>(
-    action,
-    undefined,
-  );
+export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+  // Import the action here (in a Client Component) rather than receiving it as a
+  // prop from the Server Component page — passing a function across that boundary
+  // isn't serializable under static export, and the behavior is identical.
+  const action = mode === "signup" ? signup : login;
+  const [state, formAction, pending] = useActionState(action, undefined);
   const isSignup = mode === "signup";
 
   return (

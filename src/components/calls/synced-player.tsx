@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { activeUtteranceIndex } from "@/lib/transcript-metrics";
+import { isStaticDemo, demoWavObjectUrl } from "@/lib/demo/static";
 import { cn } from "@/lib/utils";
 import type { Utterance } from "@/types/db";
 
@@ -47,9 +48,24 @@ export function SyncedPlayer({
   const [currentMs, setCurrentMs] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [query, setQuery] = useState("");
+  const [blobSrc, setBlobSrc] = useState<string | null>(null);
 
   const speakers = [...new Set(utterances.map((u) => u.speaker))];
   const activeIdx = activeUtteranceIndex(utterances, currentMs);
+
+  // On GitHub Pages there is no /api/demo/audio route — synthesize the playable
+  // WAV directly in the browser so play/seek/speed all work statically.
+  useEffect(() => {
+    if (!isStaticDemo()) return;
+    const durationSec = utterances.length
+      ? Math.ceil(Math.max(...utterances.map((u) => u.end_ms)) / 1000)
+      : 60;
+    const url = demoWavObjectUrl(durationSec);
+    setBlobSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [utterances]);
+
+  const effectiveSrc = isStaticDemo() ? blobSrc : src;
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = speed;
@@ -70,12 +86,12 @@ export function SyncedPlayer({
 
   return (
     <div className="space-y-3">
-      {src ? (
+      {effectiveSrc ? (
         <audio
           ref={audioRef}
           controls
           preload="none"
-          src={src}
+          src={effectiveSrc}
           onTimeUpdate={(e) => setCurrentMs(e.currentTarget.currentTime * 1000)}
           className="w-full"
         />

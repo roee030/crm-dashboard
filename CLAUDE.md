@@ -419,3 +419,35 @@ shell; `DemoCta` ("Enter Live Demo") on `/`, `/login`, `/signup`.
 
 **Tests:** 81 Vitest total (21 new in `tests/demo.test.ts`: detection, data integrity,
 in-memory client, Hebrew/English copilot synthesis). Guide: `PRODUCT_TOUR_HE.md`.
+
+## 13. GitHub Pages static demo (keep accurate)
+
+The Zero-env Demo also ships as a **100% client-side static export** hosted on GitHub
+Pages (`https://roee030.github.io/crm-dashboard/`), without breaking the standard
+full-stack build (`npm run build`) for Vercel/Node.
+
+- **Flag:** `NEXT_PUBLIC_STATIC_DEMO=true` (inlined into the client bundle). When unset
+  (every standard build), all static-demo branches are dead and behavior is unchanged.
+  `isStaticDemo()` lives in `src/lib/demo/static.ts`.
+- **Client engine (`src/lib/demo/static.ts`)** — browser-side fulfilment of every
+  `/api/*` feature with no backend: `demoWavBuffer`/`demoWavObjectUrl` (in-browser
+  playable WAV for `SyncedPlayer`), `clientDemoDigest` (Weekly Brief), `clientDemoCsv` +
+  `downloadTextFile` (CSV export), and re-exported `demoChatAnswer`/`demoCoaching`
+  (Ask AI, Coach, Re-analyze). Guarded fetch components: `ask-ai-drawer`, `coach-panel`,
+  `deal-health-card`, `sync-crm-button`, `weekly-brief-drawer`, `status-tracker`,
+  `filter-bar`, `uploader`, `lead-form`. `calls/[id]/page.tsx` adds `generateStaticParams`
+  (the 8 demo ids); `calls/page.tsx` skips `await searchParams` + wraps `FilterBar` in
+  `<Suspense>` under static demo; `SignOutButton` + `AuthForm` import their actions
+  directly (no function props across the server/client boundary).
+- **Config:** `next.config.ts` switches to `output: 'export'` + `basePath/assetPrefix
+  '/crm-dashboard'` + `images.unoptimized` (and loosens type/lint gates) only when
+  `GITHUB_PAGES=true`.
+- **Build script (`scripts/build-gh-pages.mjs`, `npm run build:pages`):** static export
+  can't include middleware, Request-based Route Handlers, or Server Actions, so the
+  script temporarily stashes `src/middleware.ts`, `src/app/api`, `src/app/auth` and swaps
+  the 5 Server-Action files for client-safe stubs (`scripts/gh-pages-stubs/*`), runs the
+  export, writes `out/.nojekyll`, and **always restores** the tree in `finally`.
+- **CI:** `.github/workflows/deploy-pages.yml` builds + deploys to Pages on push to `main`.
+
+**Tests:** 89 Vitest total (8 new in `tests/static-demo.test.ts`: `isStaticDemo`, WAV
+header/size, client digest, client CSV + Hebrew + formula-injection safety).

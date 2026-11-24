@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isStaticDemo } from "@/lib/demo/static";
 
 export function LeadForm() {
   const [email, setEmail] = useState("");
@@ -15,6 +16,14 @@ export function LeadForm() {
     e.preventDefault();
     setState("loading");
     setError(null);
+
+    // Static demo (GitHub Pages): capture is simulated client-side.
+    if (isStaticDemo()) {
+      await new Promise((r) => setTimeout(r, 600));
+      setState("done");
+      return;
+    }
+
     try {
       const res = await fetch("/api/leads", {
         method: "POST",

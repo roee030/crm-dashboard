@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UploadCloud, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isStaticDemo } from "@/lib/demo/static";
 import { cn } from "@/lib/utils";
 
 export function Uploader({ workspaceId }: { workspaceId: string }) {
@@ -17,6 +18,7 @@ export function Uploader({ workspaceId }: { workspaceId: string }) {
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
   async function submit() {
     setError(null);
@@ -25,6 +27,17 @@ export function Uploader({ workspaceId }: { workspaceId: string }) {
       return;
     }
     setSubmitting(true);
+
+    // Static demo (GitHub Pages): there is no ingest backend. Simulate the
+    // pipeline kicking off and point the user at the existing sample calls.
+    if (isStaticDemo()) {
+      await new Promise((r) => setTimeout(r, 900));
+      setSubmitting(false);
+      setDone(true);
+      setTimeout(() => router.push("/calls"), 1200);
+      return;
+    }
+
     try {
       const form = new FormData();
       form.set("workspace_id", workspaceId);
@@ -108,6 +121,12 @@ export function Uploader({ workspaceId }: { workspaceId: string }) {
 
       {error && (
         <p className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-400">{error}</p>
+      )}
+
+      {done && (
+        <p className="rounded-lg bg-emerald-950/60 px-3 py-2 text-sm text-emerald-300">
+          Transcription &amp; analysis started (demo) — taking you to the sample calls…
+        </p>
       )}
 
       <Button size="lg" onClick={submit} disabled={submitting} className="w-full sm:w-auto">

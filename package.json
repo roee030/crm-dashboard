@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:pages": "node scripts/build-gh-pages.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

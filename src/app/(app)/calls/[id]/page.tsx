@@ -17,8 +17,18 @@ import { PlaybookScorecard } from "@/components/calls/playbook-scorecard";
 import { computeTalkMetrics } from "@/lib/transcript-metrics";
 import { coachingSchema } from "@/schemas/coaching";
 import { formatDate, formatDuration } from "@/lib/utils";
+import { buildDemoData } from "@/lib/demo/data";
 import type { Criterion } from "@/lib/playbooks/scoring";
 import type { InsightRow, RiskFlagRow, Utterance } from "@/types/db";
+
+/**
+ * Pre-render the 8 demo calls at build time. Required for `output: 'export'`
+ * (GitHub Pages), and harmless for the standard server build where other call
+ * ids continue to render on demand (`dynamicParams` defaults to true).
+ */
+export function generateStaticParams(): { id: string }[] {
+  return buildDemoData().calls.map((c) => ({ id: c.id }));
+}
 
 export default async function CallPage({
   params,

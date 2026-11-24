@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { StatusBadge } from "@/components/calls/status-badge";
+import { isStaticDemo } from "@/lib/demo/static";
 import type { CallStatus } from "@/types/db";
 
 const ACTIVE: CallStatus[] = ["uploaded", "transcribing", "analyzing"];
@@ -28,6 +29,7 @@ export function StatusTracker({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (isStaticDemo()) return; // no polling backend on GitHub Pages
     let cancelled = false;
 
     async function poll() {

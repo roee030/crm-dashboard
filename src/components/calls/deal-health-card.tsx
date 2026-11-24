@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isStaticDemo } from "@/lib/demo/static";
 import { RefreshCw, Loader2, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,11 @@ export function DealHealthCard({
   async function reanalyze() {
     setBusy(true);
     try {
+      // Static demo: the score is deterministic; just show the re-scoring motion.
+      if (isStaticDemo()) {
+        await new Promise((r) => setTimeout(r, 500));
+        return;
+      }
       await fetch(`/api/calls/${callId}/reanalyze`, { method: "POST" });
       router.refresh();
     } finally {

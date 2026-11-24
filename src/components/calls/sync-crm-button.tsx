@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Loader2 } from "lucide-react";
+import { isStaticDemo } from "@/lib/demo/static";
 import { Button } from "@/components/ui/button";
 
 type Outcome = {
@@ -23,6 +24,13 @@ export function SyncCrmButton({ callId }: { callId: string }) {
     setBusy(true);
     setMsg(null);
     try {
+      // Static demo: simulate a successful two-way sync to both connected CRMs.
+      if (isStaticDemo()) {
+        await new Promise((r) => setTimeout(r, 650));
+        setMsg("Synced: hubspot, monday");
+        setBusy(false);
+        return;
+      }
       const res = await fetch("/api/crm/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

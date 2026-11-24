@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FileText, X, Copy, Check, Loader2 } from "lucide-react";
+import { isStaticDemo, clientDemoDigest } from "@/lib/demo/static";
 import type { WeeklyDigest } from "@/lib/digest";
 
 function toPlainText(d: WeeklyDigest): string {
@@ -29,6 +30,11 @@ export function WeeklyBriefDrawer() {
     if (digest) return;
     setLoading(true);
     try {
+      if (isStaticDemo()) {
+        await new Promise((r) => setTimeout(r, 300));
+        setDigest(clientDemoDigest());
+        return;
+      }
       const res = await fetch("/api/digest/weekly");
       const json = await res.json();
       setDigest(json.digest as WeeklyDigest);

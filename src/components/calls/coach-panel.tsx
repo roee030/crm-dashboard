@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Sparkles, Loader2, Copy, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Coaching } from "@/schemas/coaching";
+import { isStaticDemo, demoCoaching } from "@/lib/demo/static";
+import { coachingSchema, type Coaching } from "@/schemas/coaching";
 
 function scoreTone(score: number): string {
   if (score >= 8) return "text-emerald-400";
@@ -27,6 +28,17 @@ export function CoachPanel({
   async function run(refresh = false) {
     setLoading(true);
     setError(null);
+
+    // Static demo (GitHub Pages): synthesize coaching in the browser.
+    if (isStaticDemo()) {
+      await new Promise((r) => setTimeout(r, 450)); // brief "analyzing" feel
+      const parsed = coachingSchema.safeParse(demoCoaching(callId));
+      if (parsed.success) setCoaching(parsed.data);
+      else setError("Failed to generate coaching");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/calls/${callId}/coach`, {
         method: "POST",

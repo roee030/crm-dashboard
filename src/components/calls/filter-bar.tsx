@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Download, X } from "lucide-react";
+import { isStaticDemo, clientDemoCsv, downloadTextFile } from "@/lib/demo/static";
 
 const SELECTS: { key: string; label: string; options: { value: string; label: string }[] }[] = [
   {
@@ -102,12 +103,25 @@ export function FilterBar() {
         </button>
       )}
 
-      <a
-        href={exportHref}
-        className="ml-auto flex h-10 items-center gap-2 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-200 hover:bg-slate-800"
-      >
-        <Download className="h-4 w-4" /> Export CSV
-      </a>
+      {isStaticDemo() ? (
+        <button
+          type="button"
+          onClick={() => {
+            const stamp = new Date().toISOString().slice(0, 10);
+            downloadTextFile(`signaldesk-calls-${stamp}.csv`, clientDemoCsv(), "text/csv");
+          }}
+          className="ml-auto flex h-10 items-center gap-2 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-200 hover:bg-slate-800"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
+      ) : (
+        <a
+          href={exportHref}
+          className="ml-auto flex h-10 items-center gap-2 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-200 hover:bg-slate-800"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </a>
+      )}
     </div>
   );
 }

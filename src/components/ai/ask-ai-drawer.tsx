@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Sparkles, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isStaticDemo, demoChatAnswer } from "@/lib/demo/static";
 import { cn } from "@/lib/utils";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -31,6 +32,28 @@ export function AskAiDrawer() {
 
     // Placeholder assistant message we stream into.
     setMessages((m) => [...m, { role: "assistant", content: "" }]);
+
+    // Static demo (GitHub Pages): synthesize + stream the answer in the browser.
+    if (isStaticDemo()) {
+      try {
+        const answer = demoChatAnswer(next);
+        const words = answer.split(/(\s+)/);
+        let acc = "";
+        for (const w of words) {
+          acc += w;
+          setMessages((m) => {
+            const copy = [...m];
+            copy[copy.length - 1] = { role: "assistant", content: acc };
+            return copy;
+          });
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+          await new Promise((r) => setTimeout(r, 18));
+        }
+      } finally {
+        setStreaming(false);
+      }
+      return;
+    }
 
     try {
       const res = await fetch("/api/ai/chat", {

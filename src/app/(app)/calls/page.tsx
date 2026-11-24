@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Upload } from "lucide-react";
 import { requireContext } from "@/lib/workspace";
@@ -8,6 +9,7 @@ import { StatusBadge } from "@/components/calls/status-badge";
 import { FilterBar } from "@/components/calls/filter-bar";
 import { sentimentTone } from "@/lib/sentiment";
 import { riskLevel } from "@/lib/playbooks/scoring";
+import { isStaticDemo } from "@/lib/demo/static";
 import { formatDate, formatDuration } from "@/lib/utils";
 import type { RiskFlagRow, SyncStatus } from "@/types/db";
 
@@ -25,7 +27,9 @@ export default async function CallsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const sp = await searchParams;
+  // On GitHub Pages the page is static HTML (no request-time searchParams), so
+  // URL filters don't re-run server-side — skip the dynamic read to keep it static.
+  const sp = isStaticDemo() ? {} : await searchParams;
   const ctx = await requireContext();
   const supabase = await createServerSupabase();
 
@@ -106,7 +110,9 @@ export default async function CallsPage({
         </Link>
       </div>
 
-      <FilterBar />
+      <Suspense fallback={<div className="h-10" />}>
+        <FilterBar />
+      </Suspense>
 
       <div className="overflow-hidden rounded-xl border border-slate-800">
         <table className="w-full text-sm">

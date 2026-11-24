@@ -6,6 +6,7 @@
 # next.js
 /.next/
 /out/
+/.gh-pages-stash/
 next-env.d.ts
 
 # production

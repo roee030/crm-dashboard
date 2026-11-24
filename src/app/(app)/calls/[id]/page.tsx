@@ -7,15 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusTracker } from "@/components/calls/status-tracker";
 import { TranscriptViewer } from "@/components/calls/transcript-viewer";
 import { InsightsCard } from "@/components/calls/insights-card";
-import { AudioPlayer } from "@/components/calls/audio-player";
+import { SyncedPlayer } from "@/components/calls/synced-player";
 import { SyncCrmButton } from "@/components/calls/sync-crm-button";
 import { SyncHistory, type SyncLog } from "@/components/calls/sync-history";
 import { TalkRatio } from "@/components/calls/talk-ratio";
 import { CoachPanel } from "@/components/calls/coach-panel";
+import { DealHealthCard } from "@/components/calls/deal-health-card";
+import { PlaybookScorecard } from "@/components/calls/playbook-scorecard";
 import { computeTalkMetrics } from "@/lib/transcript-metrics";
 import { coachingSchema } from "@/schemas/coaching";
 import { formatDate, formatDuration } from "@/lib/utils";
-import type { InsightRow, Utterance } from "@/types/db";
+import type { Criterion } from "@/lib/playbooks/scoring";
+import type { InsightRow, RiskFlagRow, Utterance } from "@/types/db";
 
 export default async function CallPage({
   params,
@@ -55,6 +58,17 @@ export default async function CallPage({
     audioSrc = signed?.signedUrl ?? null;
   }
 
+  // Active playbook (default first) for scorecard labels.
+  const { data: playbook } = await supabase
+    .from("playbooks")
+    .select("name, criteria")
+    .eq("workspace_id", call.workspace_id)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const criteria = (playbook?.criteria ?? []) as Criterion[];
+
   const utterances = (transcript?.utterances ?? []) as Utterance[];
   const talkMetrics = computeTalkMetrics(utterances);
   const cachedCoaching = insight?.call_coaching
@@ -86,6 +100,14 @@ export default async function CallPage({
         initialError={call.error_message}
       />
 
+      {insight && (
+        <DealHealthCard
+          callId={call.id}
+          score={insight.deal_health_score}
+          riskFlags={(insight.risk_flags ?? []) as RiskFlagRow[]}
+        />
+      )}
+
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
           <Card>
@@ -97,28 +119,27 @@ export default async function CallPage({
             </CardContent>
           </Card>
 
+          {insight && criteria.length > 0 && (
+            <PlaybookScorecard
+              playbookName={playbook?.name ?? "Playbook"}
+              criteria={criteria}
+              results={(insight.playbook_results ?? {}) as Record<string, { score: number; evidence: string; coaching_tip: string }>}
+            />
+          )}
+
           <CoachPanel callId={call.id} initial={initialCoaching} />
 
           <Card>
             <CardHeader>
-              <CardTitle>Transcript</CardTitle>
+              <CardTitle>Audio &amp; Transcript</CardTitle>
             </CardHeader>
             <CardContent>
-              <TranscriptViewer utterances={utterances} />
+              <SyncedPlayer src={audioSrc} utterances={utterances} />
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Audio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AudioPlayer src={audioSrc} />
-            </CardContent>
-          </Card>
-
           {insight ? (
             <InsightsCard insight={insight as InsightRow} />
           ) : (

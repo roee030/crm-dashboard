@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Phone, Upload, Plug } from "lucide-react";
+import { LayoutDashboard, Phone, Upload, Plug, Target, Webhook, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calls", label: "Calls", icon: Phone },
   { href: "/upload", label: "Upload", icon: Upload },
+  { href: "/settings/playbooks", label: "Playbooks", icon: Target },
   { href: "/settings/integrations", label: "Integrations", icon: Plug },
+  { href: "/settings/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/settings/alerts", label: "Alerts", icon: Bell },
 ];
 
 export function Sidebar() {

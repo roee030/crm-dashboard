@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireContext } from "@/lib/workspace";
 import { getDashboardData } from "@/lib/dashboard";
 import { sentimentLabel } from "@/lib/sentiment";
@@ -5,6 +6,7 @@ import { Kpi } from "@/components/dashboard/kpi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ObjectionsChart } from "@/components/charts/objections-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
+import { WeeklyBriefDrawer } from "@/components/dashboard/weekly-brief-drawer";
 
 export default async function DashboardPage() {
   const ctx = await requireContext();
@@ -12,9 +14,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-slate-400">Conversation intelligence across your calls.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-slate-400">Conversation intelligence across your calls.</p>
+        </div>
+        <WeeklyBriefDrawer />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -27,10 +32,10 @@ export default async function DashboardPage() {
         />
         <Kpi label="Deals Won" value={String(d.wonDeals)} hint="Closed Won" accent="emerald" />
         <Kpi
-          label="At-Risk Objections"
-          value={String(d.topObjections.reduce((a, b) => a + b.count, 0))}
-          hint={`${d.topObjections.length} categories`}
-          accent="amber"
+          label="Avg Playbook Adherence"
+          value={d.avgAdherence != null ? `${d.avgAdherence}/100` : "—"}
+          hint={`${d.atRiskDeals.length} at risk`}
+          accent={d.avgAdherence != null && d.avgAdherence < 50 ? "rose" : "amber"}
         />
       </div>
 
@@ -53,6 +58,34 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>At-Risk Deals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {d.atRiskDeals.length === 0 ? (
+            <p className="py-6 text-sm text-slate-500">No at-risk deals — all healthy.</p>
+          ) : (
+            <ul className="divide-y divide-slate-800">
+              {d.atRiskDeals.map((deal) => (
+                <li key={deal.callId} className="flex items-center justify-between py-2.5">
+                  <Link
+                    href={`/calls/${deal.callId}`}
+                    dir="auto"
+                    className="text-sm text-slate-200 hover:text-indigo-300"
+                  >
+                    {deal.name}
+                  </Link>
+                  <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-xs font-medium text-rose-400">
+                    {deal.score}/100
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

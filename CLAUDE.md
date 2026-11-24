@@ -361,3 +361,32 @@ Hebrew preservation, CRM note/association formatting, talk-ratio math.
 Scripts: `npm test`, `npm run typecheck`, `npm run build`.
 
 > Per the execution workflow: Phase 1 required approval before code; all phases approved.
+
+## 11. V2 — Revenue Intelligence (keep accurate)
+
+**Migration `0004_v2_intelligence.sql`**
+- `playbooks` (RLS: member SELECT; writes via service role after owner/admin gate) —
+  `criteria` jsonb `[{id,key,label,description,weight}]`, `is_default`, `language en|he|both`.
+- `insights` + `deal_health_score` (int 0–100, deterministic weighted), `risk_flags` (jsonb),
+  `playbook_results` (jsonb map key→{score,evidence,coaching_tip}).
+- `workspace_api_keys` (RLS: service-role only) — `key_prefix` + SHA-256 `key_hash`.
+- `workspace_alert_rules` (RLS: member SELECT; service-role writes) — `webhook_url`, `triggers`.
+- `calls.external_call_id` + unique `(workspace_id, external_call_id)` for ingest dedupe.
+- Composite indexes: `insights(workspace_id,sentiment_label)`, `crm_sync_logs(call_id,created_at desc)`.
+- `provision_default_playbooks()` called by the onboarding trigger (BANT EN + B2B Qualification HE).
+
+**New routes**
+- `POST /api/calls/[id]/reanalyze` — re-score against current playbook.
+- `POST /api/webhooks/calls/ingest` — Bearer `sd_live_…`, SSRF-guarded, dedupe, 202.
+- `GET /api/calls/export?format=csv|json` — RLS-scoped, formula-injection-safe CSV.
+- `GET /api/digest/weekly` — executive weekly brief (RLS-scoped).
+- `/settings/playbooks`, `/settings/webhooks`, `/settings/alerts` (admin UIs).
+
+**Key libs**
+- `src/lib/playbooks/scoring.ts` (pure `computeDealHealth`), `src/lib/api-keys.ts`
+  (hash + `timingSafeEqual`), `src/lib/net/ssrf.ts` (IPv4/IPv6 guard), `src/lib/rate-limit.ts`,
+  `src/lib/alerts/*` (dispatch + Slack payload), `src/lib/digest.ts`, `src/lib/csv.ts`.
+- Rate limiting on `/api/leads`, `/api/ai/chat`, `/api/webhooks/calls/ingest`.
+
+**Tests:** 60 Vitest (`tests/`), covering scoring, API-key hashing, SSRF, CSV, rate limiter,
+alert payloads, transcript sync, schemas + Hebrew RTL.

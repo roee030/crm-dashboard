@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkRateLimit, clientKey } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,11 @@ const schema = z.object({
 
 /** POST /api/leads — public lead capture from the marketing landing page. */
 export async function POST(req: Request) {
+  const rl = checkRateLimit(clientKey(req, "leads"), { limit: 10, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
+  }
+
   let input: z.infer<typeof schema>;
   try {
     input = schema.parse(await req.json());

@@ -133,4 +133,21 @@ begin
     '[{"text":"Competitor is cheaper","category":"competitor"},{"text":"Price difference justification","category":"price"}]'::jsonb,
     '[{"text":"Build competitive comparison","owner":"AE","due_hint":"this week"},{"text":"Offer pilot program","owner":"AE","due_hint":"next week"}]'::jsonb,
     'Proposal');
+
+  -- Default playbooks for the dev workspace (idempotent; trigger may already have run).
+  perform public.provision_default_playbooks(ws);
+
+  -- V2: enrich demo insights with deal health + risk flags so dashboards render.
+  update public.insights i
+  set deal_health_score = case
+        when i.sentiment_score >= 0.6 then 84
+        when i.sentiment_score >= 0.1 then 63
+        when i.sentiment_score >= -0.2 then 47
+        else 31 end,
+      risk_flags = case
+        when i.sentiment_score < -0.2 then
+          '[{"severity":"high","code":"negative_sentiment","title":"Negative customer sentiment","evidence_quote":"Customer expressed strong concerns on the call."}]'::jsonb
+        else '[]'::jsonb end
+  from public.calls c
+  where i.call_id = c.id and c.workspace_id = ws;
 end $$;

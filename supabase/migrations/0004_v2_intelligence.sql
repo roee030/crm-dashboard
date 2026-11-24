@@ -71,6 +71,12 @@ begin
 end;
 $$;
 
+-- This SECURITY DEFINER function takes an arbitrary workspace id and bypasses RLS,
+-- so it must not be callable by clients. Only the onboarding trigger (itself
+-- SECURITY DEFINER) and the service role may invoke it.
+revoke execute on function public.provision_default_playbooks(uuid) from public;
+revoke execute on function public.provision_default_playbooks(uuid) from anon, authenticated;
+
 -- Onboarding follow-up: provision default playbooks on new-workspace creation.
 create or replace function public.handle_new_user()
 returns trigger
@@ -148,9 +154,9 @@ create table if not exists public.workspace_alert_rules (
 );
 create index if not exists workspace_alert_rules_ws_idx on public.workspace_alert_rules (workspace_id);
 
--- The webhook URL is not a secret per se, but writes must be admin-gated in the app.
--- Members may read rules; writes go through the service-role client after a role check.
+-- webhook_url can embed a secret token (e.g. Slack incoming-webhook URLs), so it
+-- must NOT be client-readable. RLS is enabled with NO client policy: the settings
+-- page reads/writes exclusively through the service-role client after an owner/admin
+-- role check (src/app/(app)/settings/alerts/*).
 alter table public.workspace_alert_rules enable row level security;
 drop policy if exists alert_rules_read on public.workspace_alert_rules;
-create policy alert_rules_read on public.workspace_alert_rules
-  for select using (public.is_workspace_member(workspace_id));

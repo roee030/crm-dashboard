@@ -7,10 +7,20 @@ type Bucket = { count: number; resetAt: number };
 const store = new Map<string, Bucket>();
 const MAX_ENTRIES = 10_000;
 
-/** Drop expired buckets so the in-memory store can't grow without bound. */
-function evictExpired(now: number) {
+/**
+ * Keep the store hard-bounded: first drop expired buckets, then — if still at the
+ * cap — evict the oldest entries (Map preserves insertion order), so a flood of
+ * unique keys within one window cannot grow memory without limit.
+ */
+function enforceCap(now: number) {
+  if (store.size < MAX_ENTRIES) return;
   for (const [key, bucket] of store) {
     if (now >= bucket.resetAt) store.delete(key);
+  }
+  while (store.size >= MAX_ENTRIES) {
+    const oldest = store.keys().next().value;
+    if (oldest === undefined) break;
+    store.delete(oldest);
   }
 }
 
@@ -25,10 +35,9 @@ export function checkRateLimit(
   opts: { limit: number; windowMs: number },
   now: number = Date.now(),
 ): RateLimitResult {
-  // Bound memory: sweep expired entries when the store gets large.
-  if (store.size > MAX_ENTRIES) evictExpired(now);
-
   const existing = store.get(key);
+  // Hard-bound the store before inserting a potential new key.
+  if (!existing || now >= existing.resetAt) enforceCap(now);
 
   if (!existing || now >= existing.resetAt) {
     const resetAt = now + opts.windowMs;
@@ -52,23 +61,24 @@ export function __resetRateLimitStore() {
 /**
  * Derive a client key from a request IP.
  *
- * ⚠️ `x-forwarded-for` is client-controllable unless a trusted proxy overwrites it.
- * In production, set TRUSTED_PROXY=1 only when running behind a proxy you control
- * (Vercel/Cloudflare/nginx) — then we read `x-real-ip` (set by that proxy). Without
- * it we fall back to the right-most XFF entry (appended by the nearest hop), which is
- * harder to spoof than the left-most. For robust multi-instance limiting, move to a
- * shared store (Redis/Upstash) with TTL.
+ * ⚠️ `x-forwarded-for` is client-controllable unless a trusted proxy overwrites it,
+ * and a Web `Request` exposes no socket IP. So:
+ *   - Behind a proxy you control, set TRUSTED_PROXY=1 and TRUSTED_PROXY_HEADER to the
+ *     header that proxy sets (default `x-real-ip`; e.g. `cf-connecting-ip` on Cloudflare,
+ *     `x-vercel-forwarded-for` on Vercel). That header is trusted.
+ *   - Otherwise we DO NOT trust client headers and fail closed to a single shared
+ *     bucket per scope. This is only used by the public lead form, where the limit is
+ *     abuse-dampening, not a security control.
+ * Authenticated endpoints key by identity (user id / API-key id), not by this helper.
+ * For robust multi-instance limiting, use a shared store (Redis/Upstash) keyed by the
+ * platform-provided IP.
  */
 export function clientKey(req: Request, scope: string): string {
-  let ip = "unknown";
   if (process.env.TRUSTED_PROXY === "1") {
-    ip = req.headers.get("x-real-ip") || ip;
-  } else {
-    const xff = req.headers.get("x-forwarded-for");
-    if (xff) {
-      const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
-      ip = parts[parts.length - 1] || ip; // right-most = nearest trusted hop
-    }
+    const header = process.env.TRUSTED_PROXY_HEADER || "x-real-ip";
+    const ip = req.headers.get(header)?.split(",")[0]?.trim();
+    if (ip) return `${scope}:${ip}`;
   }
-  return `${scope}:${ip}`;
+  // Fail closed: no trusted IP source → one shared bucket for this scope.
+  return `${scope}:shared`;
 }

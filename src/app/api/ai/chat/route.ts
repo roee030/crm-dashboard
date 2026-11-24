@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MODELS } from "@/lib/config/models";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { Objection } from "@/types/db";
 
 export const runtime = "nodejs";
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+
+  const rl = checkRateLimit(`chat:${user.id}`, { limit: 30, windowMs: 60_000 });
+  if (!rl.ok) return new Response("Rate limit exceeded", { status: 429 });
 
   const admin = createAdminClient();
   const { data: membership } = await admin

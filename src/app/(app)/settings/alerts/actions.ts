@@ -94,11 +94,12 @@ export async function sendTestAlert(): Promise<{ ok: boolean; error?: string }> 
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      redirect: "manual",
+      redirect: "manual", // residual DNS-rebinding TOCTOU noted in the report
       signal: AbortSignal.timeout(5000),
     });
-    return res.ok || res.status === 0 ? { ok: true } : { ok: false, error: `Endpoint returned ${res.status}` };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Request failed" };
+    // Generic result only — never surface the upstream status/body (SSRF oracle).
+    return res.ok ? { ok: true } : { ok: false, error: "Delivery failed — check the webhook URL." };
+  } catch {
+    return { ok: false, error: "Delivery failed — check the webhook URL." };
   }
 }

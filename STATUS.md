@@ -28,7 +28,11 @@ Branch: `feat/v2-revenue-intelligence` · Logs: `/tmp/*.log`
   - [x] `/settings/alerts` UI (webhook URL, 3 trigger toggles, Send Test Alert)
   - [x] `GET /api/digest/weekly` (RLS-scoped) + Weekly Executive Brief drawer on `/dashboard` (EN/HE, copy)
   - Verifier: tsc ✅ · build ✅ · alerts/digest SSRF-guarded + workspace-scoped
-- [ ] **Phase 5** — Hardening, 35+ tests, push
-  - [ ] Rate limiting + SSRF guard
-  - [ ] Vitest 35+
-  - [ ] Verify green + docs + merge/push
+- [x] **Phase 5** — Hardening, 35+ tests, push
+  - [x] Rate limiting wired into /api/leads, /api/ai/chat, /api/webhooks/calls/ingest
+  - [x] SSRF guard (IPv4/IPv6) on recording_url + alert webhooks
+  - [x] Vitest **60** passing (target 35+)
+  - [x] Gate: npm test ✅ · tsc ✅ · next build ✅ (28 routes)
+  - [x] Docs: CLAUDE.md V2 section + OVERNIGHT_V2_REPORT.md
+  - [x] Security: removed alert response-oracle; all reviewer findings addressed
+  - [ ] Merge to main + push ← final step

@@ -17,12 +17,12 @@ Branch: `feat/v2-revenue-intelligence` · Logs: `/tmp/*.log`
   - [x] `/settings/webhooks` (generate/revoke, copy-once secret, snippets, test button)
   - Verifier: tsc ✅ · tests 19/19 ✅ · build ✅ · key_hash never client-selected · SSRF guard on recording_url
   - Security review fixes: IPv6 SSRF fail-closed allowlist, alert fetch `redirect:"manual"`, playbooks RLS → member-read/service-role-write
-- [~] **Phase 3** — Synced player, search, export (PARTIAL — usage limit hit)
+- [x] **Phase 3** — Synced player, search, export
   - [x] Audio ↔ transcript sync (click-to-seek, active highlight, 1x–2x speed, keyword search/highlight) on `/calls/[id]`
-  - [x] `GET /api/calls/export?format=csv|json` (RLS-scoped, RFC-4180 escaping) — **export button on `/calls` still TODO**
-  - [ ] `/calls` multi-facet URL-param filters (sentiment, risk, language, CRM sync) — NOT DONE
-  - Verifier: tsc ✅ · build ✅ (tests not expanded yet)
-  - Also applied: anchored IPv6 SSRF regex fix (second security-review pass)
+  - [x] `GET /api/calls/export?format=csv|json` (RLS-scoped, RFC-4180 + formula-injection guard)
+  - [x] `/calls` multi-facet URL-param filters (search, sentiment, risk, language, CRM sync) + Export CSV button
+  - Verifier: tsc ✅ · build ✅
+  - Security follow-up: CSV formula-injection guard added to `csvEscape`; audited export (RLS-scoped, no secret columns) + anchored IPv6 SSRF regex
 - [ ] **Phase 4** — Alerts & weekly digest
   - [ ] `workspace_alert_rules` + `/settings/alerts` + finalize dispatch
   - [ ] `GET /api/digest/weekly` + dashboard drawer

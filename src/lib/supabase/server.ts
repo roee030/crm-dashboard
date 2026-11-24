@@ -1,12 +1,22 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/db";
+import { isDemoMode } from "@/lib/demo/mode";
+import { createDemoClient } from "@/lib/demo/client";
 
 /**
  * User-scoped server client (RLS enforced). Reads the session from cookies.
  * Use for anything acting on behalf of the signed-in user.
+ *
+ * In zero-env demo mode this returns an in-memory client serving the bilingual
+ * demo dataset, so every page/route works with no Supabase configured.
  */
 export async function createServerSupabase() {
+  if (isDemoMode()) {
+    return createDemoClient() as unknown as SupabaseClient<Database>;
+  }
+
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

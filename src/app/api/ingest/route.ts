@@ -3,6 +3,8 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveContext } from "@/lib/api/context";
 import { submitTranscription, uploadAudio } from "@/lib/assemblyai/client";
+import { isDemoMode } from "@/lib/demo/mode";
+import { buildDemoData } from "@/lib/demo/data";
 
 export const runtime = "nodejs";
 
@@ -25,6 +27,21 @@ const jsonBody = z.object({
  * + the same text fields). On local dev, send header `x-dev-api-key` to skip auth.
  */
 export async function POST(req: Request) {
+  // Demo mode: accept the upload and return a ready-made completed demo call so
+  // the /upload flow redirects to a fully-populated call page.
+  if (isDemoMode()) {
+    const demo = buildDemoData().calls[0];
+    return NextResponse.json(
+      {
+        call_id: demo.id,
+        status: "completed",
+        mode: "demo",
+        note: "Demo mode — returning a pre-analyzed sample call.",
+      },
+      { status: 202 },
+    );
+  }
+
   const contentType = req.headers.get("content-type") ?? "";
 
   let fields: z.infer<typeof jsonBody>;

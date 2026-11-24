@@ -5,6 +5,8 @@ import { authenticateApiKey } from "@/lib/api-keys";
 import { submitTranscription } from "@/lib/assemblyai/client";
 import { isPublicHttpUrl } from "@/lib/net/ssrf";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isDemoMode } from "@/lib/demo/mode";
+import { buildDemoData } from "@/lib/demo/data";
 
 export const runtime = "nodejs";
 
@@ -26,6 +28,26 @@ const body = z.object({
  * Dedupes on (workspace_id, external_call_id). Returns 202 + status URL.
  */
 export async function POST(req: Request) {
+  // Demo mode: accept the test webhook without a real key and return a demo call.
+  if (isDemoMode()) {
+    let recordingOk = true;
+    try {
+      const b = await req.json();
+      recordingOk = typeof b?.recording_url === "string";
+    } catch {
+      recordingOk = false;
+    }
+    if (!recordingOk) {
+      return NextResponse.json({ error: "Provide a recording_url (demo)." }, { status: 400 });
+    }
+    const demo = buildDemoData().calls[0];
+    const origin = new URL(req.url).origin;
+    return NextResponse.json(
+      { call_id: demo.id, status: "completed", mode: "demo", status_url: `${origin}/api/calls/${demo.id}/sync-status` },
+      { status: 202 },
+    );
+  }
+
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   const principal = await authenticateApiKey(token);

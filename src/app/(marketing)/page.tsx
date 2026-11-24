@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Check, X, ArrowRight, Sparkles } from "lucide-react";
 import { LiveAnalyzer } from "@/components/marketing/live-analyzer";
 import { LeadForm } from "@/components/marketing/lead-form";
+import { DemoCta } from "@/components/demo/demo-cta";
 
 const TIERS = [
   {
@@ -79,6 +80,7 @@ export default function LandingPage() {
           >
             Try live demo
           </a>
+          <DemoCta />
         </div>
       </section>
 

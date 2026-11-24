@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveContext } from "@/lib/api/context";
 import { runSyncForCall } from "@/lib/crm/integration";
+import { isDemoMode } from "@/lib/demo/mode";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,19 @@ export async function POST(req: Request) {
       { error: "Invalid request", detail: e instanceof Error ? e.message : String(e) },
       { status: 400 },
     );
+  }
+
+  // Demo mode: simulate a successful sync to the connected providers.
+  if (isDemoMode()) {
+    const providers = input.provider ? [input.provider] : (["hubspot", "monday"] as const);
+    const ref = input.call_id.slice(-4);
+    const outcomes = providers.map((p) => ({
+      provider: p,
+      status: "synced" as const,
+      externalRef: p === "hubspot" ? `hs-note-${ref}` : `mon-item-${ref}`,
+      url: p === "hubspot" ? `https://app.hubspot.com/contacts/demo/record/${ref}` : `https://demo.monday.com/boards/987654321/pulses/${ref}`,
+    }));
+    return NextResponse.json({ outcomes }, { status: 200 });
   }
 
   const db = createAdminClient();

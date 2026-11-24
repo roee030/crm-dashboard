@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveContext } from "@/lib/api/context";
 import { analyzeAndStoreInsights } from "@/lib/pipeline/analyze";
+import { isDemoMode } from "@/lib/demo/mode";
+import { demoReanalyze } from "@/lib/demo/responses";
 
 export const runtime = "nodejs";
 
@@ -16,6 +18,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  // Demo mode: deterministic re-score, no Claude call.
+  if (isDemoMode()) {
+    return NextResponse.json({ ok: true, deal_health_score: demoReanalyze(id) });
+  }
 
   const db = createAdminClient();
   const { data: call } = await db

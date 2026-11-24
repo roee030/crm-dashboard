@@ -3,6 +3,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MODELS } from "@/lib/config/models";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isDemoMode } from "@/lib/demo/mode";
+import { demoChatAnswer } from "@/lib/demo/responses";
 import type { Objection } from "@/types/db";
 
 export const runtime = "nodejs";
@@ -11,12 +13,45 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" })
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+function streamText(text: string): Response {
+  const words = text.match(/\S+\s*|\n/g) ?? [text];
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      for (const w of words) {
+        controller.enqueue(encoder.encode(w));
+        await new Promise((r) => setTimeout(r, 18));
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
 /**
  * POST /api/ai/chat — streaming workspace copilot.
  * Strictly scoped to the authenticated user's workspace: we resolve the workspace
  * from their membership and only feed Claude that workspace's call data.
  */
 export async function POST(req: Request) {
+  // Demo mode: synthesize a context-aware answer from the in-memory dataset.
+  if (isDemoMode()) {
+    let messages: ChatMessage[] = [];
+    try {
+      const body = await req.json();
+      messages = Array.isArray(body?.messages) ? body.messages : [];
+    } catch {
+      return new Response("Invalid body", { status: 400 });
+    }
+    messages = messages.filter(
+      (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
+    );
+    if (messages.length === 0) return new Response("No messages", { status: 400 });
+    return streamText(demoChatAnswer(messages));
+  }
+
   const supabase = await createServerSupabase();
   const {
     data: { user },

@@ -390,3 +390,32 @@ Scripts: `npm test`, `npm run typecheck`, `npm run build`.
 
 **Tests:** 60 Vitest (`tests/`), covering scoring, API-key hashing, SSRF, CSV, rate limiter,
 alert payloads, transcript sync, schemas + Hebrew RTL.
+
+## 12. Zero-env Demo Mode (keep accurate)
+
+Runs the full app with **no `.env.local`** by falling back to an in-memory bilingual
+dataset. `isDemoMode()` (`src/lib/demo/mode.ts`) is true when `DEMO_MODE=true` **or**
+`NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are unset. When false, every
+production path (Supabase + RLS, AssemblyAI, Claude, CRM) is unchanged — the demo
+layer is inert.
+
+**Library**
+- `src/lib/demo/mode.ts` — detection + demo tenant constants.
+- `src/lib/demo/data.ts` — `buildDemoData()`: 8 calls (4 HE RTL + 4 EN), transcripts
+  (diarized utterances w/ ms timestamps), insights (deal health, risk flags, BANT
+  playbook_results, cached coaching), CRM integrations + sync logs, playbooks, API
+  keys, alert rule. Returns a fresh deep copy each call.
+- `src/lib/demo/client.ts` — in-memory supabase-compatible client (chainable
+  select/insert/update/upsert/delete + eq/gte/order/limit/maybeSingle/single,
+  `auth.getUser`, `storage.createSignedUrl`). `createServerSupabase` / `createAdminClient`
+  return it in demo mode; `middleware.ts` bypasses auth.
+- `src/lib/demo/responses.ts` — synthesized copilot/coaching/reanalyze answers
+  (Hebrew-aware), derived from the dataset; no external API calls.
+
+**Demo surfaces** — `GET /api/demo/audio/[id]` (real playable WAV w/ Range support),
+demo short-circuits in `/api/ai/chat`, `/api/calls/[id]/coach`, `/api/calls/[id]/reanalyze`,
+`/api/ingest`, `/api/webhooks/calls/ingest`, `/api/crm/sync`. `DemoBanner` in the (app)
+shell; `DemoCta` ("Enter Live Demo") on `/`, `/login`, `/signup`.
+
+**Tests:** 81 Vitest total (21 new in `tests/demo.test.ts`: detection, data integrity,
+in-memory client, Hebrew/English copilot synthesis). Guide: `PRODUCT_TOUR_HE.md`.

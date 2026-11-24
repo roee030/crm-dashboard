@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isDemoMode } from "@/lib/demo/mode";
 
 /**
  * Refreshes the Supabase auth session cookie on navigation.
@@ -7,6 +8,10 @@ import { createServerClient } from "@supabase/ssr";
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // Zero-env demo mode: no auth session to refresh and no route guards — the
+  // (app) group loads immediately against the in-memory demo dataset.
+  if (isDemoMode()) return response;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
